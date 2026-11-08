@@ -42,7 +42,7 @@ async function startBot() {
     const { connection, lastDisconnect, qr } = update;
 
     if (qr) {
-      console.log("Scan this QR code:");
+      console.log("METHU MD QR CODE:");
       qrcode.generate(qr, { small: true });
     }
 
@@ -58,20 +58,19 @@ async function startBot() {
       const statusCode =
         lastDisconnect?.error?.output?.statusCode;
 
-      if (
-        statusCode !== DisconnectReason.loggedOut &&
-        !reconnecting
-      ) {
-        reconnecting = true;
+      if (statusCode === DisconnectReason.loggedOut) {
+        console.log("Session logged out. Login again.");
+        return;
+      }
 
+      if (!reconnecting) {
+        reconnecting = true;
         console.log("Reconnecting METHU MD...");
 
         setTimeout(async () => {
           reconnecting = false;
           await startBot();
         }, 3000);
-      } else if (statusCode === DisconnectReason.loggedOut) {
-        console.log("Session logged out. Login again.");
       }
     }
   });
@@ -92,7 +91,7 @@ async function startBot() {
 
       console.log("METHU MD PAIRING CODE:", code);
     } else if (method.trim() === "2") {
-      console.log("Waiting for QR code...");
+      console.log("Waiting for QR Code...");
     } else {
       console.log("Invalid option. Restart the bot.");
     }
@@ -105,7 +104,6 @@ async function startBot() {
       if (!msg.message || msg.key.fromMe) continue;
 
       const text = getMessageText(msg);
-
       if (!text) continue;
 
       try {
