@@ -7,6 +7,7 @@ import makeWASocket, {
 
 import pino from "pino";
 import readline from "readline";
+import qrcode from "qrcode-terminal";
 
 import { config } from "./config.js";
 import { handleCommand } from "./commands.js";
@@ -38,22 +39,31 @@ async function startBot() {
   sock.ev.on("creds.update", saveCreds);
 
   sock.ev.on("connection.update", async (update) => {
-    const { connection, lastDisconnect } = update;
+    const { connection, lastDisconnect, qr } = update;
+
+    if (qr) {
+      console.log("Scan this QR code:");
+      qrcode.generate(qr, { small: true });
+    }
 
     if (connection === "connecting") {
       console.log("METHU MD Connecting...");
     }
 
     if (connection === "open") {
-      console.log("METHU MD Connected Successfully!");
+      console.log("METHU MD Connected Successfully! 💜");
     }
 
     if (connection === "close") {
       const statusCode =
         lastDisconnect?.error?.output?.statusCode;
 
-      if (statusCode !== DisconnectReason.loggedOut && !reconnecting) {
+      if (
+        statusCode !== DisconnectReason.loggedOut &&
+        !reconnecting
+      ) {
         reconnecting = true;
+
         console.log("Reconnecting METHU MD...");
 
         setTimeout(async () => {
@@ -61,7 +71,7 @@ async function startBot() {
           await startBot();
         }, 3000);
       } else if (statusCode === DisconnectReason.loggedOut) {
-        console.log("Session logged out. Please login again.");
+        console.log("Session logged out. Login again.");
       }
     }
   });
@@ -72,18 +82,19 @@ async function startBot() {
     );
 
     if (method.trim() === "1") {
-      const phoneNumber = await question(
+      const number = await question(
         "Enter WhatsApp number with country code: "
       );
 
       const code = await sock.requestPairingCode(
-        phoneNumber.replace(/[^0-9]/g, "")
+        number.replace(/[^0-9]/g, "")
       );
 
       console.log("METHU MD PAIRING CODE:", code);
+    } else if (method.trim() === "2") {
+      console.log("Waiting for QR code...");
     } else {
-      console.log("Scan the QR code from the terminal.");
-      console.log("Wait for QR code to appear...");
+      console.log("Invalid option. Restart the bot.");
     }
 
     rl.close();
@@ -106,6 +117,4 @@ async function startBot() {
   });
 }
 
-startBot().catch(error => {
-  console.error("METHU MD Startup Error:", error);
-});
+startBot().catch(console.error);
