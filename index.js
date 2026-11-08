@@ -8,7 +8,9 @@ import makeWASocket, {
 import pino from "pino";
 import readline from "readline";
 
-const BOT_NAME = "METHU MD";
+import { config } from "./config.js";
+import { handleCommand } from "./commands.js";
+import { getMessageText } from "./lib/functions.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -16,7 +18,9 @@ const rl = readline.createInterface({
 });
 
 const question = (text) =>
-  new Promise((resolve) => rl.question(text, resolve));
+  new Promise(resolve => rl.question(text, resolve));
+
+let reconnecting = false;
 
 async function startBot() {
   const { state, saveCreds } =
@@ -28,8 +32,7 @@ async function startBot() {
     version,
     auth: state,
     logger: pino({ level: "silent" }),
-    printQRInTerminal: true,
-    browser: [BOT_NAME, "Chrome", "1.0.0"]
+    browser: [config.BOT_NAME, "Chrome", "1.0.0"]
   });
 
   sock.ev.on("creds.update", saveCreds);
@@ -42,50 +45,67 @@ async function startBot() {
     }
 
     if (connection === "open") {
-      console.log("METHU MD Bot Connected Successfully!");
-      rl.close();
+      console.log("METHU MD Connected Successfully!");
     }
 
     if (connection === "close") {
       const statusCode =
         lastDisconnect?.error?.output?.statusCode;
 
-      if (statusCode !== DisconnectReason.loggedOut) {
-        startBot();
-      } else {
-        console.log("Session logged out. Login again.");
+      if (statusCode !== DisconnectReason.loggedOut && !reconnecting) {
+        reconnecting = true;
+        console.log("Reconnecting METHU MD...");
+
+        setTimeout(async () => {
+          reconnecting = false;
+          await startBot();
+        }, 3000);
+      } else if (statusCode === DisconnectReason.loggedOut) {
+        console.log("Session logged out. Please login again.");
       }
     }
   });
 
-  if (!sock.authState.creds.registered) {
-    const phoneNumber = await question(
-      "Enter WhatsApp number with country code: "
+  if (!state.creds.registered) {
+    const method = await question(
+      "Choose Login: 1 = Pairing Code, 2 = QR Code: "
     );
 
-    const code = await sock.requestPairingCode(
-      phoneNumber.replace(/[^0-9]/g, "")
-    );
+    if (method.trim() === "1") {
+      const phoneNumber = await question(
+        "Enter WhatsApp number with country code: "
+      );
 
-    console.log("METHU MD PAIRING CODE:", code);
+      const code = await sock.requestPairingCode(
+        phoneNumber.replace(/[^0-9]/g, "")
+      );
+
+      console.log("METHU MD PAIRING CODE:", code);
+    } else {
+      console.log("Scan the QR code from the terminal.");
+      console.log("Wait for QR code to appear...");
+    }
+
+    rl.close();
   }
 
   sock.ev.on("messages.upsert", async ({ messages }) => {
-    const msg = messages[0];
+    for (const msg of messages) {
+      if (!msg.message || msg.key.fromMe) continue;
 
-    if (!msg.message || msg.key.fromMe) return;
+      const text = getMessageText(msg);
 
-    const text =
-      msg.message.conversation ||
-      msg.message.extendedTextMessage?.text ||
-      "";
+      if (!text) continue;
 
-    if (text.toLowerCase() === ".ping") {
-      await sock.sendMessage(msg.key.remoteJid, {
-        text: "METHU MD Bot is Online! 🚀"
-      });
+      try {
+        await handleCommand(sock, msg, text);
+      } catch (error) {
+        console.error("Command Error:", error);
+      }
     }
   });
 }
 
-startBot().catch(console.error);
+startBot().catch(error => {
+  console.error("METHU MD Startup Error:", error);
+});
