@@ -1,4 +1,4 @@
-![METHU MD](banner.png)
+![https://u.pone.rs/xziyjrjj.jpg](banner.png)
 
 <div align="center">
 
