@@ -1,8 +1,10 @@
-![https://u.pone.rs/xziyjrjj.jpg](banner.png)
 
 <div align="center">
 
 # 👑 METHU MD BOT
+
+  <img src="https://u.pone.rs/xziyjrjj.jpg" alt="METHU MD Banner" width="95%" style="border-radius: 20px; border: 4px solid #FF0000; box-shadow: 0 0 40px rgba(255, 0, 0, 0.6);">
+</a>
 
 ### ⚡ WhatsApp Bot | Fast • Powerful • Smart
 
